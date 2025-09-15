@@ -1,171 +1,133 @@
 # Booking Service API
 
-A FastAPI-based booking and service management system with MongoDB backend.
+A FastAPI booking system I built for managing service appointments with user authentication and admin controls.
 
-## Features
+## Why I Built It This Way
 
-- 🔐 **JWT Authentication** with role-based access control
-- 📅 **Booking System** with conflict prevention
-- ⭐ **Review System** with rating statistics
-- 🛡️ **Admin Controls** for service and booking management
-- 📊 **MongoDB** with async operations
-- 🚀 **FastAPI** with automatic API documentation
+### Technology Choices
 
-## Quick Start
+I went with **FastAPI** because it gives you automatic API docs and handles async operations really well. Coming from other frameworks, the type hints and automatic validation were game-changers for catching bugs early.
 
-### Option 1: Using Docker (Recommended)
+**MongoDB** was my database choice, and here's why that made sense:
+- Booking data isn't super relational - you've got users, services, bookings, and reviews that don't need complex joins
+- The async MongoDB driver (Motor) plays nicely with FastAPI's async nature
+- When you're dealing with different types of services (haircuts vs dental appointments), the flexible schema helps
+- Scaling horizontally is easier when you inevitably get more traffic
 
-1. **Start MongoDB with Docker Compose:**
+I structured the code using clean architecture because I've been burned by spaghetti code before:
+- Models handle data validation (Pydantic does the heavy lifting)
+- Repositories talk to the database
+- Services contain all the business rules
+- Routers just handle HTTP stuff
 
-   ```bash
-   docker-compose up -d
-   ```
+### Security Decisions
 
-2. **Install Python dependencies:**
+For authentication, I implemented JWT tokens because they're stateless and work well for APIs. Password hashing uses bcrypt because it's battle-tested. The role system is simple - just users and admins - but you could easily extend it.
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+## Getting This Running Locally
 
-3. **Run the application:**
-   ```bash
-   python main.py
-   ```
+### What You'll Need
+- Python 3.9 or newer
+- Either Docker (easiest) or MongoDB installed locally
+- About 10 minutes
 
-### Option 2: Local MongoDB
+### The Easy Way (Docker)
 
-1. **Install and start MongoDB locally**
+First, grab the code and get into the directory:
+```bash
+git clone <your-repo-url>
+cd alt-assignment
+```
 
-2. **Install dependencies:**
+Start up MongoDB with the included Docker setup:
+```bash
+docker-compose up -d
+```
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+This spins up MongoDB on port 27017 and gives you a web admin interface at http://localhost:8081 (no login required).
 
-3. **Update .env file** with your MongoDB connection string
+Set up your Python environment:
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Windows folks: .venv\Scripts\activate
+pip install -r requirements-fixed.txt
+```
 
-4. **Run the application:**
-   ```bash
-   python main.py
-   ```
+Create your environment file:
+```bash
+cp .env .env.local
+# Edit .env.local if you want to change anything
+```
 
-## API Documentation
+Fire it up:
+```bash
+python main.py
+```
 
-Once running, visit:
+You should see it connect to MongoDB and start serving on http://localhost:8000. The interactive API docs are at http://localhost:8000/docs.
 
-- **API Docs (Swagger):** http://localhost:8000/docs
-- **Alternative Docs (ReDoc):** http://localhost:8000/redoc
-- **MongoDB Admin (if using Docker):** http://localhost:8081
+### If You Don't Want Docker
 
-## API Endpoints
+Install MongoDB however you prefer:
+```bash
+# Mac users
+brew install mongodb/brew/mongodb-community
+brew services start mongodb/brew/mongodb-community
 
-### Authentication
+# Ubuntu/Debian
+sudo apt-get install mongodb
+sudo systemctl start mongod
+```
 
-- `POST /users/register` - Register new user
-- `POST /users/login` - Login and get JWT token
-- `GET /users/me` - Get current user info (protected)
+Then follow the Python setup steps above.
 
-### Services
+### Quick Test
 
-- `GET /services/` - List active services (public)
-- `POST /services/` - Create service (admin only)
-- `GET /services/search?q=query` - Search services
-
-### Bookings
-
-- `POST /bookings/` - Create booking (protected)
-- `GET /bookings/` - Get user bookings (protected)
-- `PATCH /bookings/{id}/confirm` - Confirm booking
-- `PATCH /bookings/{id}/cancel` - Cancel booking
-
-### Reviews
-
-- `POST /reviews/` - Create review (protected)
-- `GET /reviews/service/{id}` - Get service reviews
-- `GET /reviews/service/{id}/stats` - Get rating statistics
-
-## Example Usage
-
-### 1. Register a user
-
+Once it's running, you can create a test admin user:
 ```bash
 curl -X POST "http://localhost:8000/users/register" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "John Doe",
-    "email": "john@example.com",
-    "password": "password123"
+    "name": "Test Admin",
+    "email": "admin@test.com",
+    "password": "password123",
+    "role": "admin"
   }'
 ```
 
-### 2. Login and get token
-
-```bash
-curl -X POST "http://localhost:8000/users/login" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "john@example.com",
-    "password": "password123"
-  }'
-```
-
-### 3. Create a booking (with token)
-
-```bash
-curl -X POST "http://localhost:8000/bookings/" \
-  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "service_id": 1,
-    "start_time": "2024-12-25T10:00:00"
-  }'
-```
-
-## Project Structure
-
-```
-/Users/Apple/vscode_projects/alt-assignment/
-├── main.py                          # FastAPI app entry point
-├── database.py                      # MongoDB connection
-├── docker-compose.yml              # MongoDB setup
-├── requirements.txt                 # Python dependencies
-├── .env                            # Environment variables
-├── models/                         # Pydantic models
-│   ├── user.py
-│   ├── service.py
-│   ├── booking.py
-│   └── review.py
-├── repositories/                   # Database access layer
-│   ├── user_repository.py
-│   ├── service_repository.py
-│   ├── booking_repository.py
-│   └── review_repository.py
-├── services/                       # Business logic layer
-│   ├── user_service.py
-│   ├── service_service.py
-│   ├── booking_service.py
-│   ├── review_service.py
-│   └── auth_service.py
-└── routers/                        # API route handlers
-    ├── user_router.py
-    ├── service_router.py
-    ├── booking_router.py
-    └── review_router.py
-```
+Then head to http://localhost:8000/docs to play around with the API.
 
 ## Environment Variables
 
-Copy `.env` and update the values:
+Here's what you can configure:
 
+| Variable | What It Does | Default Value | Must Set? |
+|----------|--------------|---------------|-----------|
+| `MONGODB_URL` | Where to find MongoDB | `mongodb://localhost:27017` | No |
+| `SECRET_KEY` | Signs your JWT tokens (CHANGE THIS!) | `your-secret-key-here...` | **YES** |
+| `ALGORITHM` | JWT signing algorithm | `HS256` | No |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | How long tokens last | `30` | No |
+| `DB_NAME` | Database name | `booking_service` | No |
+
+### Sample Configurations
+
+**For development (.env):**
 ```env
 MONGODB_URL=mongodb://localhost:27017
-SECRET_KEY=your-secret-key-here-change-in-production
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+SECRET_KEY=some-long-random-string-for-development
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+DB_NAME=booking_dev
 ```
 
-## Development
+**For production (.env.production):**
+```env
+MONGODB_URL=mongodb+srv://username:password@cluster.mongodb.net/booking_service
+SECRET_KEY=super-secure-256-bit-key-generated-properly
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+DB_NAME=booking_service
+```
 
-The application will gracefully handle MongoDB connection failures and continue running with limited functionality.
+The secret key is crucial - it signs your JWT tokens. In production, generate a proper random key and keep it safe.
 
-**Suggested commit message:** "Fix lifespan events deprecation and add graceful MongoDB connection handling with Docker setup"
+
+
