@@ -12,7 +12,8 @@ mongodb = MongoDBConnection()
 async def connect_to_mongo():
     """Create database connection"""
     mongodb.client = AsyncIOMotorClient(
-        os.getenv("MONGODB_URL", "mongodb://localhost:27017")
+        os.getenv("MONGODB_URL", ""),
+        serverSelectionTimeoutMS=5000  # 5 second timeout
     )
     mongodb.database = mongodb.client.booking_service
     
@@ -20,8 +21,11 @@ async def connect_to_mongo():
     try:
         await mongodb.client.admin.command('ping')
         print("Successfully connected to MongoDB!")
-    except ConnectionFailure:
-        print("Failed to connect to MongoDB")
+    except ConnectionFailure as e:
+        print(f"Failed to connect to MongoDB: {e}")
+        raise
+    except Exception as e:
+        print(f"MongoDB connection error: {e}")
         raise
 
 async def close_mongo_connection():
