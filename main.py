@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 import uvicorn
-from routers import user_router, booking_router
+from routers import user_router, booking_router, service_router, review_router
 from database import connect_to_mongo, close_mongo_connection
 
 app = FastAPI(
@@ -20,7 +20,9 @@ async def shutdown_db_client():
 
 # Include routers
 app.include_router(user_router.router)
+app.include_router(service_router.router)
 app.include_router(booking_router.router)
+app.include_router(review_router.router)
 
 @app.get("/")
 async def root():
