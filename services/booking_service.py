@@ -26,6 +26,10 @@ class BookingService:
         if not service.is_active:
             raise ValueError("Service is not available")
         
+        # Ensure start_time is timezone-naive for comparison
+        if start_time.tzinfo is not None:
+            start_time = start_time.replace(tzinfo=None)
+        
         # Validate start time is in the future
         if start_time <= datetime.utcnow():
             raise ValueError("Booking start time must be in the future")
@@ -73,8 +77,13 @@ class BookingService:
         if booking.status != BookingStatus.PENDING:
             raise ValueError("Only pending bookings can be confirmed")
         
+        # Ensure start_time is timezone-naive for comparison
+        start_time = booking.start_time
+        if start_time.tzinfo is not None:
+            start_time = start_time.replace(tzinfo=None)
+        
         # Check if booking time has not passed
-        if booking.start_time <= datetime.utcnow():
+        if start_time <= datetime.utcnow():
             raise ValueError("Cannot confirm past bookings")
         
         updated_booking = await self.booking_repo.update_status(booking_id, BookingStatus.CONFIRMED)
@@ -96,8 +105,13 @@ class BookingService:
         if booking.status in [BookingStatus.CANCELLED, BookingStatus.COMPLETED]:
             raise ValueError(f"Cannot cancel {booking.status.value} booking")
         
+        # Ensure start_time is timezone-naive for comparison
+        start_time = booking.start_time
+        if start_time.tzinfo is not None:
+            start_time = start_time.replace(tzinfo=None)
+        
         # Check cancellation policy (e.g., can't cancel within 24 hours)
-        hours_until_booking = (booking.start_time - datetime.utcnow()).total_seconds() / 3600
+        hours_until_booking = (start_time - datetime.utcnow()).total_seconds() / 3600
         if hours_until_booking < 24:
             raise ValueError("Cannot cancel booking within 24 hours of start time")
         
@@ -116,8 +130,13 @@ class BookingService:
         if booking.status != BookingStatus.CONFIRMED:
             raise ValueError("Only confirmed bookings can be completed")
         
+        # Ensure end_time is timezone-naive for comparison
+        end_time = booking.end_time
+        if end_time.tzinfo is not None:
+            end_time = end_time.replace(tzinfo=None)
+        
         # Check if booking end time has passed
-        if booking.end_time > datetime.utcnow():
+        if end_time > datetime.utcnow():
             raise ValueError("Cannot complete booking before end time")
         
         updated_booking = await self.booking_repo.update_status(booking_id, BookingStatus.COMPLETED)
@@ -131,26 +150,42 @@ class BookingService:
         user_bookings = await self.booking_repo.get_by_user_id(user_id)
         now = datetime.utcnow()
         
-        return [
-            booking for booking in user_bookings 
-            if booking.start_time > now and booking.status in [BookingStatus.PENDING, BookingStatus.CONFIRMED]
-        ]
+        upcoming = []
+        for booking in user_bookings:
+            start_time = booking.start_time
+            if start_time.tzinfo is not None:
+                start_time = start_time.replace(tzinfo=None)
+            
+            if start_time > now and booking.status in [BookingStatus.PENDING, BookingStatus.CONFIRMED]:
+                upcoming.append(booking)
+        
+        return upcoming
     
     async def get_booking_history(self, user_id: int) -> List[Booking]:
         """Get booking history for a user"""
         user_bookings = await self.booking_repo.get_by_user_id(user_id)
         now = datetime.utcnow()
         
-        return [
-            booking for booking in user_bookings 
-            if booking.end_time <= now or booking.status in [BookingStatus.CANCELLED, BookingStatus.COMPLETED]
-        ]
+        history = []
+        for booking in user_bookings:
+            end_time = booking.end_time
+            if end_time.tzinfo is not None:
+                end_time = end_time.replace(tzinfo=None)
+            
+            if end_time <= now or booking.status in [BookingStatus.CANCELLED, BookingStatus.COMPLETED]:
+                history.append(booking)
+        
+        return history
     
     async def check_availability(self, service_id: int, start_time: datetime) -> bool:
         """Check if a time slot is available for booking"""
         service = await self.service_repo.get_by_id(service_id)
         if not service or not service.is_active:
             return False
+        
+        # Ensure start_time is timezone-naive
+        if start_time.tzinfo is not None:
+            start_time = start_time.replace(tzinfo=None)
         
         end_time = start_time + timedelta(minutes=service.duration_minutes)
         conflicts = await self.booking_repo.get_conflicting_bookings(service_id, start_time, end_time)

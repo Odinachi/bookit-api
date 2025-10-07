@@ -15,7 +15,7 @@ class BookingRepository:
         """Create a new booking in MongoDB"""
         collection = self.get_collection()
         
-        booking_data["created_at"] = datetime.now(datetime.timezone.utc)
+        booking_data["created_at"] = datetime.utcnow()
         booking_data["id"] = await self._get_next_id()
         booking_data["status"] = booking_data["status"].value
         

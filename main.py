@@ -38,11 +38,19 @@ app.include_router(review_router.router)
 
 @app.get("/")
 async def root():
-    return {"message": "Booking Service API", "version": "1.0.0"}
+    return {
+        "status_code": 200,
+        "message": "Welcome to Booking Service API",
+        "data": {"version": "1.0.0", "service": "Booking Service API"}
+    }
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    return {
+        "status_code": 200,
+        "message": "Service is healthy",
+        "data": {"status": "healthy", "timestamp": "2024-01-01T00:00:00Z"}
+    }
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=2000)

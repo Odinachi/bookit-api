@@ -42,7 +42,7 @@ class PasswordChange(BaseModel):
     old_password: str
     new_password: str
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_user(user_data: UserCreate):
     """Register a new user"""
     try:
@@ -52,13 +52,17 @@ async def register_user(user_data: UserCreate):
             password=user_data.password,
             role=user_data.role
         )
-        return UserResponse(
-            id=user.id,
-            name=user.name,
-            email=user.email,
-            role=user.role,
-            created_at=user.created_at.isoformat()
-        )
+        return {
+            "status_code": 201,
+            "message": "User registered successfully",
+            "data": UserResponse(
+                id=user.id,
+                name=user.name,
+                email=user.email,
+                role=user.role,
+                created_at=user.created_at.isoformat()
+            )
+        }
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -70,7 +74,7 @@ async def register_user(user_data: UserCreate):
             detail="Failed to create user"
         )
 
-@router.post("/login", response_model=LoginResponse)
+@router.post("/login")
 async def login_user(login_data: UserLogin):
     """Login user and return JWT token"""
     try:
@@ -80,17 +84,21 @@ async def login_user(login_data: UserLogin):
         )
         
         user = result["user"]
-        return LoginResponse(
-            access_token=result["access_token"],
-            token_type=result["token_type"],
-            user=UserResponse(
-                id=user.id,
-                name=user.name,
-                email=user.email,
-                role=user.role,
-                created_at=user.created_at.isoformat()
+        return {
+            "status_code": 200,
+            "message": "Login successful",
+            "data": LoginResponse(
+                access_token=result["access_token"],
+                token_type=result["token_type"],
+                user=UserResponse(
+                    id=user.id,
+                    name=user.name,
+                    email=user.email,
+                    role=user.role,
+                    created_at=user.created_at.isoformat()
+                )
             )
-        )
+        }
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -102,18 +110,22 @@ async def login_user(login_data: UserLogin):
             detail="Login failed"
         )
 
-@router.get("/me", response_model=UserResponse)
+@router.get("/me")
 async def get_current_user_info(current_user: User = Depends(auth_service.get_current_user)):
     """Get current user information (protected endpoint)"""
-    return UserResponse(
-        id=current_user.id,
-        name=current_user.name,
-        email=current_user.email,
-        role=current_user.role,
-        created_at=current_user.created_at.isoformat()
-    )
+    return {
+        "status_code": 200,
+        "message": "User information retrieved successfully",
+        "data": UserResponse(
+            id=current_user.id,
+            name=current_user.name,
+            email=current_user.email,
+            role=current_user.role,
+            created_at=current_user.created_at.isoformat()
+        )
+    }
 
-@router.get("/{user_id}", response_model=UserResponse)
+@router.get("/{user_id}")
 async def get_user(
     user_id: int,
     current_user: User = Depends(auth_service.get_current_admin_user)
@@ -126,13 +138,17 @@ async def get_user(
             detail="User not found"
         )
     
-    return UserResponse(
-        id=user.id,
-        name=user.name,
-        email=user.email,
-        role=user.role,
-        created_at=user.created_at.isoformat()
-    )
+    return {
+        "status_code": 200,
+        "message": "User retrieved successfully",
+        "data": UserResponse(
+            id=user.id,
+            name=user.name,
+            email=user.email,
+            role=user.role,
+            created_at=user.created_at.isoformat()
+        )
+    }
 
 @router.patch("/me/password", status_code=status.HTTP_200_OK)
 async def change_password(
@@ -148,7 +164,11 @@ async def change_password(
         )
         
         if success:
-            return {"message": "Password changed successfully"}
+            return {
+                "status_code": 200,
+                "message": "Password changed successfully",
+                "data": None
+            }
         else:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -172,3 +192,8 @@ async def delete_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
+    return {
+        "status_code": 204,
+        "message": "User deleted successfully",
+        "data": None
+    }

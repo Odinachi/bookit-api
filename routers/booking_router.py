@@ -37,7 +37,7 @@ class AvailabilityCheck(BaseModel):
     service_id: int
     start_time: datetime
 
-@router.post("/", response_model=BookingResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_booking(
     booking_data: BookingCreate,
     current_user: User = Depends(auth_service.get_current_user)
@@ -49,7 +49,11 @@ async def create_booking(
             service_id=booking_data.service_id,
             start_time=booking_data.start_time
         )
-        return BookingResponse(**booking.dict())
+        return {
+            "status_code": 201,
+            "message": "Booking created successfully",
+            "data": BookingResponse(**booking.model_dump())
+        }
     except ValueError as e:
         # Check if it's a conflict error
         if "already booked" in str(e) or "conflict" in str(e).lower():
@@ -67,25 +71,37 @@ async def create_booking(
             detail="Failed to create booking"
         )
 
-@router.get("/", response_model=List[BookingResponse])
+@router.get("/")
 async def get_user_bookings(current_user: User = Depends(auth_service.get_current_user)):
     """Get all bookings for current user"""
     bookings = await booking_service.get_user_bookings(current_user.id)
-    return [BookingResponse(**booking.dict()) for booking in bookings]
+    return {
+        "status_code": 200,
+        "message": "User bookings retrieved successfully",
+        "data": [BookingResponse(**booking.model_dump()) for booking in bookings]
+    }
 
-@router.get("/upcoming", response_model=List[BookingResponse])
+@router.get("/upcoming")
 async def get_upcoming_bookings(current_user: User = Depends(auth_service.get_current_user)):
     """Get upcoming bookings for current user"""
     bookings = await booking_service.get_upcoming_bookings(current_user.id)
-    return [BookingResponse(**booking.dict()) for booking in bookings]
+    return {
+        "status_code": 200,
+        "message": "Upcoming bookings retrieved successfully",
+        "data": [BookingResponse(**booking.model_dump()) for booking in bookings]
+    }
 
-@router.get("/history", response_model=List[BookingResponse])
+@router.get("/history")
 async def get_booking_history(current_user: User = Depends(auth_service.get_current_user)):
     """Get booking history for current user"""
     bookings = await booking_service.get_booking_history(current_user.id)
-    return [BookingResponse(**booking.dict()) for booking in bookings]
+    return {
+        "status_code": 200,
+        "message": "Booking history retrieved successfully",
+        "data": [BookingResponse(**booking.model_dump()) for booking in bookings]
+    }
 
-@router.get("/{booking_id}", response_model=BookingResponse)
+@router.get("/{booking_id}")
 async def get_booking(
     booking_id: int,
     current_user: User = Depends(auth_service.get_current_user)
@@ -105,9 +121,13 @@ async def get_booking(
             detail="Access denied"
         )
     
-    return BookingResponse(**booking.dict())
+    return {
+        "status_code": 200,
+        "message": "Booking retrieved successfully",
+        "data": BookingResponse(**booking.model_dump())
+    }
 
-@router.patch("/{booking_id}/confirm", response_model=BookingResponse)
+@router.patch("/{booking_id}/confirm")
 async def confirm_booking(
     booking_id: int,
     current_user: User = Depends(auth_service.get_current_user)
@@ -119,7 +139,11 @@ async def confirm_booking(
             booking_id=booking_id,
             user_id=current_user.id if current_user.role.value != "admin" else None
         )
-        return BookingResponse(**booking.dict())
+        return {
+            "status_code": 200,
+            "message": "Booking confirmed successfully",
+            "data": BookingResponse(**booking.model_dump())
+        }
     except ValueError as e:
         if "not found" in str(e):
             raise HTTPException(
@@ -137,7 +161,7 @@ async def confirm_booking(
                 detail=str(e)
             )
 
-@router.patch("/{booking_id}/cancel", response_model=BookingResponse)
+@router.patch("/{booking_id}/cancel")
 async def cancel_booking(
     booking_id: int,
     current_user: User = Depends(auth_service.get_current_user)
@@ -148,7 +172,11 @@ async def cancel_booking(
             booking_id=booking_id,
             user_id=current_user.id
         )
-        return BookingResponse(**booking.dict())
+        return {
+            "status_code": 200,
+            "message": "Booking cancelled successfully",
+            "data": BookingResponse(**booking.model_dump())
+        }
     except ValueError as e:
         if "not found" in str(e):
             raise HTTPException(
@@ -166,7 +194,7 @@ async def cancel_booking(
                 detail=str(e)
             )
 
-@router.patch("/{booking_id}/complete", response_model=BookingResponse)
+@router.patch("/{booking_id}/complete")
 async def complete_booking(
     booking_id: int,
     current_user: User = Depends(auth_service.get_current_admin_user)
@@ -174,7 +202,11 @@ async def complete_booking(
     """Mark booking as completed (admin only)"""
     try:
         booking = await booking_service.complete_booking(booking_id)
-        return BookingResponse(**booking.dict())
+        return {
+            "status_code": 200,
+            "message": "Booking completed successfully",
+            "data": BookingResponse(**booking.model_dump())
+        }
     except ValueError as e:
         if "not found" in str(e):
             raise HTTPException(
@@ -197,14 +229,22 @@ async def check_availability(
         service_id=availability_data.service_id,
         start_time=availability_data.start_time
     )
-    return {"available": available}
+    return {
+        "status_code": 200,
+        "message": "Availability checked successfully",
+        "data": {"available": available}
+    }
 
 # Admin routes
-@router.get("/service/{service_id}", response_model=List[BookingResponse])
+@router.get("/service/{service_id}")
 async def get_service_bookings(
     service_id: int,
     current_user: User = Depends(auth_service.get_current_admin_user)
 ):
     """Get all bookings for a service (admin only)"""
     bookings = await booking_service.get_service_bookings(service_id)
-    return [BookingResponse(**booking.dict()) for booking in bookings]
+    return {
+        "status_code": 200,
+        "message": "Service bookings retrieved successfully",
+        "data": [BookingResponse(**booking.model_dump()) for booking in bookings]
+    }

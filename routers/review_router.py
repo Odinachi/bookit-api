@@ -35,7 +35,7 @@ class ReviewResponse(BaseModel):
     comment: str
     created_at: str
 
-@router.post("/", response_model=ReviewResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_review(
     review_data: ReviewCreate,
     current_user: User = Depends(auth_service.get_current_user)
@@ -48,13 +48,17 @@ async def create_review(
             rating=review_data.rating,
             comment=review_data.comment
         )
-        return ReviewResponse(
-            id=review.id,
-            booking_id=review.booking_id,
-            rating=review.rating,
-            comment=review.comment,
-            created_at=review.created_at.isoformat()
-        )
+        return {
+            "status_code": 201,
+            "message": "Review created successfully",
+            "data": ReviewResponse(
+                id=review.id,
+                booking_id=review.booking_id,
+                rating=review.rating,
+                comment=review.comment,
+                created_at=review.created_at.isoformat()
+            )
+        }
     except ValueError as e:
         if "not found" in str(e):
             raise HTTPException(
@@ -72,41 +76,53 @@ async def create_review(
                 detail=str(e)
             )
 
-@router.get("/my-reviews", response_model=List[ReviewResponse])
+@router.get("/my-reviews")
 async def get_my_reviews(current_user: User = Depends(auth_service.get_current_user)):
     """Get all reviews by current user"""
     reviews = await review_service.get_user_reviews(current_user.id)
-    return [
-        ReviewResponse(
-            id=review.id,
-            booking_id=review.booking_id,
-            rating=review.rating,
-            comment=review.comment,
-            created_at=review.created_at.isoformat()
-        )
-        for review in reviews
-    ]
+    return {
+        "status_code": 200,
+        "message": "User reviews retrieved successfully",
+        "data": [
+            ReviewResponse(
+                id=review.id,
+                booking_id=review.booking_id,
+                rating=review.rating,
+                comment=review.comment,
+                created_at=review.created_at.isoformat()
+            )
+            for review in reviews
+        ]
+    }
 
-@router.get("/service/{service_id}", response_model=List[ReviewResponse])
+@router.get("/service/{service_id}")
 async def get_service_reviews(service_id: int):
     """Get all reviews for a service (public endpoint)"""
     reviews = await review_service.get_service_reviews(service_id)
-    return [
-        ReviewResponse(
-            id=review.id,
-            booking_id=review.booking_id,
-            rating=review.rating,
-            comment=review.comment,
-            created_at=review.created_at.isoformat()
-        )
-        for review in reviews
-    ]
+    return {
+        "status_code": 200,
+        "message": "Service reviews retrieved successfully",
+        "data": [
+            ReviewResponse(
+                id=review.id,
+                booking_id=review.booking_id,
+                rating=review.rating,
+                comment=review.comment,
+                created_at=review.created_at.isoformat()
+            )
+            for review in reviews
+        ]
+    }
 
 @router.get("/service/{service_id}/stats")
 async def get_service_rating_stats(service_id: int):
     """Get rating statistics for a service"""
     stats = await review_service.get_service_rating_stats(service_id)
-    return stats
+    return {
+        "status_code": 200,
+        "message": "Service rating statistics retrieved successfully",
+        "data": stats
+    }
 
 @router.get("/service/{service_id}/recent")
 async def get_recent_service_reviews(service_id: int, limit: int = 10):
@@ -118,18 +134,22 @@ async def get_recent_service_reviews(service_id: int, limit: int = 10):
         )
     
     reviews = await review_service.get_recent_reviews(service_id, limit)
-    return [
-        ReviewResponse(
-            id=review.id,
-            booking_id=review.booking_id,
-            rating=review.rating,
-            comment=review.comment,
-            created_at=review.created_at.isoformat()
-        )
-        for review in reviews
-    ]
+    return {
+        "status_code": 200,
+        "message": f"Recent reviews retrieved successfully (limit: {limit})",
+        "data": [
+            ReviewResponse(
+                id=review.id,
+                booking_id=review.booking_id,
+                rating=review.rating,
+                comment=review.comment,
+                created_at=review.created_at.isoformat()
+            )
+            for review in reviews
+        ]
+    }
 
-@router.get("/{review_id}", response_model=ReviewResponse)
+@router.get("/{review_id}")
 async def get_review(review_id: int):
     """Get review by ID (public endpoint)"""
     review = await review_service.get_review_by_id(review_id)
@@ -139,15 +159,19 @@ async def get_review(review_id: int):
             detail="Review not found"
         )
     
-    return ReviewResponse(
-        id=review.id,
-        booking_id=review.booking_id,
-        rating=review.rating,
-        comment=review.comment,
-        created_at=review.created_at.isoformat()
-    )
+    return {
+        "status_code": 200,
+        "message": "Review retrieved successfully",
+        "data": ReviewResponse(
+            id=review.id,
+            booking_id=review.booking_id,
+            rating=review.rating,
+            comment=review.comment,
+            created_at=review.created_at.isoformat()
+        )
+    }
 
-@router.patch("/{review_id}", response_model=ReviewResponse)
+@router.patch("/{review_id}")
 async def update_review(
     review_id: int,
     review_data: ReviewUpdate,
@@ -161,13 +185,17 @@ async def update_review(
             rating=review_data.rating,
             comment=review_data.comment
         )
-        return ReviewResponse(
-            id=review.id,
-            booking_id=review.booking_id,
-            rating=review.rating,
-            comment=review.comment,
-            created_at=review.created_at.isoformat()
-        )
+        return {
+            "status_code": 200,
+            "message": "Review updated successfully",
+            "data": ReviewResponse(
+                id=review.id,
+                booking_id=review.booking_id,
+                rating=review.rating,
+                comment=review.comment,
+                created_at=review.created_at.isoformat()
+            )
+        }
     except ValueError as e:
         if "not found" in str(e):
             raise HTTPException(
@@ -198,6 +226,11 @@ async def delete_review(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Review not found"
             )
+        return {
+            "status_code": 204,
+            "message": "Review deleted successfully",
+            "data": None
+        }
     except ValueError as e:
         if "not found" in str(e):
             raise HTTPException(

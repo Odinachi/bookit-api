@@ -16,6 +16,11 @@ user_repo = UserRepository()
 service_service = ServiceService(service_repo)
 auth_service = AuthService(user_repo)
 
+# Dependency functions
+async def get_current_admin_user(current_user: User = Depends(auth_service.get_current_admin_user)) -> User:
+    """Dependency to get current admin user"""
+    return current_user
+
 # Request/Response models
 class ServiceCreate(BaseModel):
     title: str
@@ -39,39 +44,47 @@ class ServiceResponse(BaseModel):
     is_active: bool
     created_at: str
 
-@router.get("/", response_model=List[ServiceResponse])
+@router.get("/")
 async def get_services():
     """Get all active services (public endpoint)"""
     services = await service_service.get_all_active_services()
-    return [
-        ServiceResponse(
-            id=service.id,
-            title=service.title,
-            description=service.description,
-            price=service.price,
-            duration_minutes=service.duration_minutes,
-            is_active=service.is_active,
-            created_at=service.created_at.isoformat()
-        )
-        for service in services
-    ]
+    return {
+        "status_code": 200,
+        "message": "Active services retrieved successfully",
+        "data": [
+            ServiceResponse(
+                id=service.id,
+                title=service.title,
+                description=service.description,
+                price=service.price,
+                duration_minutes=service.duration_minutes,
+                is_active=service.is_active,
+                created_at=service.created_at.isoformat()
+            )
+            for service in services
+        ]
+    }
 
-@router.get("/all", response_model=List[ServiceResponse])
-async def get_all_services(current_user: User = Depends(auth_service.get_current_admin_user)):
+@router.get("/all")
+async def get_all_services(current_user: User = Depends(get_current_admin_user)):
     """Get all services including inactive ones (admin only)"""
     services = await service_service.get_all_services()
-    return [
-        ServiceResponse(
-            id=service.id,
-            title=service.title,
-            description=service.description,
-            price=service.price,
-            duration_minutes=service.duration_minutes,
-            is_active=service.is_active,
-            created_at=service.created_at.isoformat()
-        )
-        for service in services
-    ]
+    return {
+        "status_code": 200,
+        "message": "All services retrieved successfully",
+        "data": [
+            ServiceResponse(
+                id=service.id,
+                title=service.title,
+                description=service.description,
+                price=service.price,
+                duration_minutes=service.duration_minutes,
+                is_active=service.is_active,
+                created_at=service.created_at.isoformat()
+            )
+            for service in services
+        ]
+    }
 
 @router.get("/search")
 async def search_services(q: str):
@@ -83,20 +96,24 @@ async def search_services(q: str):
         )
     
     services = await service_service.search_services(q.strip())
-    return [
-        ServiceResponse(
-            id=service.id,
-            title=service.title,
-            description=service.description,
-            price=service.price,
-            duration_minutes=service.duration_minutes,
-            is_active=service.is_active,
-            created_at=service.created_at.isoformat()
-        )
-        for service in services
-    ]
+    return {
+        "status_code": 200,
+        "message": f"Search results for '{q}'",
+        "data": [
+            ServiceResponse(
+                id=service.id,
+                title=service.title,
+                description=service.description,
+                price=service.price,
+                duration_minutes=service.duration_minutes,
+                is_active=service.is_active,
+                created_at=service.created_at.isoformat()
+            )
+            for service in services
+        ]
+    }
 
-@router.get("/{service_id}", response_model=ServiceResponse)
+@router.get("/{service_id}")
 async def get_service(service_id: int):
     """Get service by ID"""
     service = await service_service.get_service_by_id(service_id)
@@ -106,20 +123,24 @@ async def get_service(service_id: int):
             detail="Service not found"
         )
     
-    return ServiceResponse(
-        id=service.id,
-        title=service.title,
-        description=service.description,
-        price=service.price,
-        duration_minutes=service.duration_minutes,
-        is_active=service.is_active,
-        created_at=service.created_at.isoformat()
-    )
+    return {
+        "status_code": 200,
+        "message": "Service retrieved successfully",
+        "data": ServiceResponse(
+            id=service.id,
+            title=service.title,
+            description=service.description,
+            price=service.price,
+            duration_minutes=service.duration_minutes,
+            is_active=service.is_active,
+            created_at=service.created_at.isoformat()
+        )
+    }
 
-@router.post("/", response_model=ServiceResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_service(
     service_data: ServiceCreate,
-    current_user: User = Depends(auth_service.get_current_admin_user)
+    current_user: User = Depends(get_current_admin_user)
 ):
     """Create a new service (admin only)"""
     try:
@@ -129,31 +150,35 @@ async def create_service(
             price=service_data.price,
             duration_minutes=service_data.duration_minutes
         )
-        return ServiceResponse(
-            id=service.id,
-            title=service.title,
-            description=service.description,
-            price=service.price,
-            duration_minutes=service.duration_minutes,
-            is_active=service.is_active,
-            created_at=service.created_at.isoformat()
-        )
+        return {
+            "status_code": 201,
+            "message": "Service created successfully",
+            "data": ServiceResponse(
+                id=service.id,
+                title=service.title,
+                description=service.description,
+                price=service.price,
+                duration_minutes=service.duration_minutes,
+                is_active=service.is_active,
+                created_at=service.created_at.isoformat()
+            )
+        }
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
 
-@router.patch("/{service_id}", response_model=ServiceResponse)
+@router.patch("/{service_id}")
 async def update_service(
     service_id: int,
     service_data: ServiceUpdate,
-    current_user: User = Depends(auth_service.get_current_admin_user)
+    current_user: User = Depends(get_current_admin_user)
 ):
     """Update service (admin only)"""
     try:
         # Convert to dict and remove None values
-        update_data = {k: v for k, v in service_data.dict().items() if v is not None}
+        update_data = {k: v for k, v in service_data.model_dump().items() if v is not None}
         
         if not update_data:
             raise HTTPException(
@@ -168,25 +193,29 @@ async def update_service(
                 detail="Service not found"
             )
         
-        return ServiceResponse(
-            id=service.id,
-            title=service.title,
-            description=service.description,
-            price=service.price,
-            duration_minutes=service.duration_minutes,
-            is_active=service.is_active,
-            created_at=service.created_at.isoformat()
-        )
+        return {
+            "status_code": 200,
+            "message": "Service updated successfully",
+            "data": ServiceResponse(
+                id=service.id,
+                title=service.title,
+                description=service.description,
+                price=service.price,
+                duration_minutes=service.duration_minutes,
+                is_active=service.is_active,
+                created_at=service.created_at.isoformat()
+            )
+        }
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
 
-@router.patch("/{service_id}/activate", response_model=ServiceResponse)
+@router.patch("/{service_id}/activate")
 async def activate_service(
     service_id: int,
-    current_user: User = Depends(auth_service.get_current_admin_user)
+    current_user: User = Depends(get_current_admin_user)
 ):
     """Activate service (admin only)"""
     service = await service_service.activate_service(service_id)
@@ -196,20 +225,24 @@ async def activate_service(
             detail="Service not found"
         )
     
-    return ServiceResponse(
-        id=service.id,
-        title=service.title,
-        description=service.description,
-        price=service.price,
-        duration_minutes=service.duration_minutes,
-        is_active=service.is_active,
-        created_at=service.created_at.isoformat()
-    )
+    return {
+        "status_code": 200,
+        "message": "Service activated successfully",
+        "data": ServiceResponse(
+            id=service.id,
+            title=service.title,
+            description=service.description,
+            price=service.price,
+            duration_minutes=service.duration_minutes,
+            is_active=service.is_active,
+            created_at=service.created_at.isoformat()
+        )
+    }
 
-@router.patch("/{service_id}/deactivate", response_model=ServiceResponse)
+@router.patch("/{service_id}/deactivate")
 async def deactivate_service(
     service_id: int,
-    current_user: User = Depends(auth_service.get_current_admin_user)
+    current_user: User = Depends(get_current_admin_user)
 ):
     """Deactivate service (admin only)"""
     service = await service_service.deactivate_service(service_id)
@@ -219,20 +252,24 @@ async def deactivate_service(
             detail="Service not found"
         )
     
-    return ServiceResponse(
-        id=service.id,
-        title=service.title,
-        description=service.description,
-        price=service.price,
-        duration_minutes=service.duration_minutes,
-        is_active=service.is_active,
-        created_at=service.created_at.isoformat()
-    )
+    return {
+        "status_code": 200,
+        "message": "Service deactivated successfully",
+        "data": ServiceResponse(
+            id=service.id,
+            title=service.title,
+            description=service.description,
+            price=service.price,
+            duration_minutes=service.duration_minutes,
+            is_active=service.is_active,
+            created_at=service.created_at.isoformat()
+        )
+    }
 
 @router.delete("/{service_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_service(
     service_id: int,
-    current_user: User = Depends(auth_service.get_current_admin_user)
+    current_user: User = Depends(get_current_admin_user)
 ):
     """Delete service (admin only) - soft delete by deactivating"""
     success = await service_service.delete_service(service_id)
@@ -241,3 +278,8 @@ async def delete_service(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Service not found"
         )
+    return {
+        "status_code": 204,
+        "message": "Service deleted successfully",
+        "data": None
+    }

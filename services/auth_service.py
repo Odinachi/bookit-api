@@ -48,8 +48,9 @@ class AuthService:
         
         return user
     
-    async def get_current_admin_user(self, current_user: User = Depends(lambda: auth_service.get_current_user)) -> User:
+    async def get_current_admin_user(self, credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:
         """Get current user and verify admin role"""
+        current_user = await self.get_current_user(credentials)
         if current_user.role != UserRole.ADMIN:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
